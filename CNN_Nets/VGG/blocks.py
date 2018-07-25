@@ -1,5 +1,5 @@
 import tensorflow as tf
-from .bins import *
+from bins import *
 
 
 def conv_layer(input, parameters, block_index, layer_index):
@@ -38,8 +38,8 @@ def FC_layer(input, parameters, layer_index):
     layer_name = "FC" + str(layer_index)
     with tf.name_scope(layer_name):
         with tf.variable_scope(layer_name + "variables", reuse=tf.AUTO_REUSE):
-            W = tf.get_variable("weight", tf.float32, w_shape, initializer=tf.random_normal_initializer())
-            b = tf.get_variable("bias", tf.float32, b_shape, initializer=tf.random_normal_initializer())
+            W = tf.get_variable("weight", w_shape, initializer=tf.random_normal_initializer())
+            b = tf.get_variable("bias",  b_shape, initializer=tf.random_normal_initializer())
         with tf.name_scope("FC"):
             output = tf.add(tf.matmul(input, W), b)
         if hasattr(tf.nn, nolinear_func):
@@ -50,19 +50,18 @@ def FC_layer(input, parameters, layer_index):
 
 def pooling_layer(input, parameters, block_index, layer_index):
     layer_params = parse_param('pooling', parameters)
-    window_shape, pooling_type, padding = layer_params
+    window_shape, pooling_type, padding, stride = layer_params
     layer_name = "pooling" + str(block_index) + str(layer_index)
     with tf.name_scope(layer_name):
-        output = tf.nn.pool(input, window_shape, pooling_type, padding)
+        output = tf.nn.pool(input, window_shape, pooling_type, padding=padding, strides=stride)
     return output
-
 
 
 def conv_pool_block(input, parameters, block_index):
     a = input
     num_conv, conv_params, pool_params = parse_param("c_p_block", parameters)
     for l in range(num_conv):
-        a = conv_layer(input=a, parameters=conv_params, block_index=block_index, layer_index=l)
+        a = conv_layer(input=a, parameters=conv_params[l], block_index=block_index, layer_index=l)
     output = pooling_layer(input=a, parameters=pool_params, block_index= block_index, layer_index=1)
     return output
 
@@ -70,5 +69,5 @@ def conv_pool_block(input, parameters, block_index):
 def flatten_block(input, parameters):
     output_shape = parse_param("flatten", parameters)
     with tf.name_scope("flatten"):
-        output = tf.reshape(input, [-1, output_shape])
+        output = tf.reshape(tensor=input, shape=[-1, output_shape])
     return output
