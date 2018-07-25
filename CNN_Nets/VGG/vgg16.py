@@ -24,24 +24,27 @@ class VGG_16(object):
             l_type = self.layer_type[l]
             l_params = self.layer_params[l]
             if l_type == "c_p":
-                a = conv_pool_block(a, parameters=l_params)
+                a = conv_pool_block(a, parameters=l_params, block_index=l)
             if l_type == "fc":
-                a = FC_layer(a, parameters=l_params)
+                a = FC_layer(a, parameters=l_params, layer_index=l)
+            if l_type == 'ft':
+                a = flatten_block(a, parameters=l_params)
             else:
                 raise ValueError("unsupport model type: %s" % l_type)
         self.output = tf.nn.softmax(a)
 
     def train_setting(self, loss, optimzer, learning_rate):
-        self.loss = loss(self.output, self.Y)
+        with tf.name_scope("train"):
+            self.loss = loss(self.output, self.Y)
 
-        if optimzer == 'adam':
-            self.optimzer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-        if optimzer == 'sgd':
-            self.optimzer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
-        else:
-            raise ValueError("unsupport optimzer: %s" % optimzer)
-
-        self.train_op = self.optimzer.minimize(self.loss, global_step=self.global_step)
+            if optimzer == 'adam':
+                self.optimzer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+            if optimzer == 'sgd':
+                self.optimzer = tf.train.GradientDescentOptimizer(learning_rate=learning_rate)
+            else:
+                raise ValueError("unsupport optimzer: %s" % optimzer)
+            with tf.name_scope("train_step"):
+                self.train_op = self.optimzer.minimize(self.loss, global_step=self.global_step)
 
     def train(self):
         with tf.Session() as sess:
