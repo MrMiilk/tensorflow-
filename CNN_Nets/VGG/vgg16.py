@@ -1,5 +1,6 @@
 import tensorflow as tf
 from blocks import *
+from input_data import *
 
 
 class VGG_16(object):
@@ -52,10 +53,29 @@ class VGG_16(object):
                 self.train_op = self.optimzer.minimize(self.loss, global_step=self.global_step)
 
     def train(self):
-        inizer = tf.global_variables_initializer()
-        with tf.Session() as sess:
+        Input_Queue = Input_data('.\\DS2\\*.*')
+        inizer = tf.group(
+            tf.global_variables_initializer(),
+            tf.local_variables_initializer()
+        )
+        gpu_options = tf.GPUOptions(per_process_gpu_memory_fraction=0.5)
+        with tf.Session(config=tf.ConfigProto(gpu_options=gpu_options)) as sess:
             sess.run(inizer)
             self.writer = tf.summary.FileWriter(self.log_dir, sess.graph)
+            batch_X, batch_y = Input_Queue.input_pipline(batch_size=30)
+            coord = tf.train.Coordinator()
+            threads = tf.train.start_queue_runners(sess=sess, coord=coord)
+            try:
+                for _ in range(1000):
+                    if not coord.should_stop():
+                        bx, by = sess.run([batch_X, batch_y])
+                        sess.run(self.train_op, feed_dict={self.input:bx, self.Y:by})
+                        print(_)
+            except tf.errors.OutOfRangeError:
+                print(('Catch out of range'))
+            finally:
+                coord.request_stop()
+            coord.join(threads)
 
     def predict(self):
         pass
